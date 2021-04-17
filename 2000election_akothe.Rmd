@@ -1,0 +1,187 @@
+---
+title: "week9_hw"
+author: "Angela Kothe"
+date: "4/15/2021"
+output: html_document
+---
+
+This an R Markdown document, containing maps of the 1996 & 2000 Presidential Elections, by
+Angela Kothe.
+
+County Map 2000, Presidential Election
+
+```{r pressure, echo=FALSE, fig.keep='last'}
+library(devtools)
+library(maps)
+library(tidyverse)
+library(socviz)
+library(scales)
+library(cowplot)
+
+election <- election
+us_states <- map_data("state")
+
+election$region <- tolower(election$state)
+us_states_elec <- left_join(us_states, election, by="region")
+
+county_map <- county_map
+county_full <- left_join(county_map, county_data, by = "id")
+
+counties2020 <- read_csv(file="/Users/annkothe/desktop/r/counties.csv")
+county_full$county_fips <- county_full$id
+counties2000 <- left_join(county_full, counties2020, by="name")
+
+#county map 2000
+counties2000$demmargin2000<-counties2000$GORE-counties2000$BUSH
+counties2000$repmargin2000<-counties2000$BUSH-counties2000$GORE
+
+counties2000$winner2000<-round(counties2000$demmargin2000/(max(counties2000$demmargin2000)+1)+.5, 0)
+
+counties2000$winner2000[which(counties2000$demmargin2000 < 0)] = "Republican"
+counties2000$winner2000[which(counties2000$demmargin2000 > 0)] = "Democrat"
+
+party_colors <- c("#2E74C0","#CB454A") 
+p <- ggplot(data = counties2000,
+            mapping = aes(x = long, y = lat, fill = factor(winner2000), 
+                          group = group))
+p1 <- p + geom_polygon(color = "gray90", size = 0.05) + coord_equal()
+p2 <- p1 + scale_fill_manual(values = party_colors)
+p2 + labs(fill = "US Presidential Election by County 2000") + 
+  guides(fill = guide_legend(nrow = 2)) +  theme_map() + theme(legend.position = "top")
+```
+
+County Lean, 2000 Presidential Election
+```{r pressure2, echo=FALSE, fig.keep='last'}
+p <- ggplot(data = counties2000,
+            mapping = aes(x = long, y = lat, fill = demmargin2000, 
+                          group = group)); p
+p1 <- p + geom_polygon(color = "gray90", size = 0.05) + coord_equal(); p1
+p2 <- p1 + scale_fill_gradient2() + labs(title = "Presidential Election Results - 2000"); p2
+p2 + theme_map() + labs(fill = "Percent")
+p3 <- p1 + scale_fill_gradient2(low = "red", mid = "white",
+                                high = "royalblue", breaks = c(-1, -.5, 0, .5, 1)) +
+  labs(title = "County Lean 2000") ; p3
+p3 + theme_map() + labs(fill = "Percent")+
+  guides(fill = FALSE)
+
+```
+
+Presidential Election, 2000
+
+```{r pressure3, echo=FALSE, fig.keep='last'}
+counties2020$state <- counties2020$STATE
+election2000 <- left_join(us_states_elec, counties2020, by="state")
+states2000 <- subset(election2000, select=c(long, lat, group, order, state, fips, name, PBUSH, PGORE, BUSH, GORE))
+
+states2000$demmargin2000<-states2000$GORE-states2000$BUSH
+states2000$repmargin2000<-states2000$BUSH-states2000$GORE
+
+states2000$winner2000<-round(states2000$demmargin2000/(max(states2000$demmargin2000)+1)+.5,0)
+
+states2000$winner2000[which(states2000$demmargin2000 < 0)] = "Republican"
+states2000$winner2000[which(states2000$demmargin2000 > 0)] = "Democrat"
+
+bruh2000 <- read_csv(file="/Users/annkothe/desktop/r/2000results.csv")
+god2000 <- subset(election2000, select=c(long, lat, group, order, state, fips, PBUSH,
+                                            PGORE, BUSH, GORE))
+test2000 <- left_join(god2000, bruh2000, by="state")
+
+party_colors <- c("#2E74C0", "#CB454A") 
+p0 <- ggplot(data = test2000,
+             mapping = aes(x = long, y = lat,
+                           group = group, fill = winner))
+p1 <- p0 + geom_polygon(color = "gray90", size = 0.1) +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45) 
+p2 <- p1 + scale_fill_manual(values = party_colors) +
+  labs(title = "Election Results 2000", fill = NULL)
+p2 + theme_map() + guides(fill = FALSE)
+```
+
+Presidential Election, 1996
+```{r pressure4, echo=FALSE, fig.keep='last'}
+party_colors <- c("#2E74C0", "#CB454A") 
+p0 <- ggplot(data = test2000,
+             mapping = aes(x = long, y = lat,
+                           group = group, fill = winner96))
+p1 <- p0 + geom_polygon(color = "gray90", size = 0.1) +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45) 
+p2 <- p1 + scale_fill_manual(values = party_colors) +
+  labs(title = "Election Results 1996", fill = NULL)
+p2 + theme_map() + guides(fill = FALSE)
+```
+
+Purple Map 2000, Presidential Election
+```{r pressure5, echo=FALSE, fig.keep='last'}
+test2000$demmargin2000<-test2000$dem-test2000$rep
+
+p0 <- ggplot(data = test2000,
+             mapping = aes(x = long, y = lat, group = group, fill = demmargin2000))
+
+p1 <- p0 + geom_polygon(color = "black", size = 0.1) + coord_map(projection = "albers", lat0 = 39, lat1 = 45) 
+
+p2 <- p1 + scale_fill_gradient2(low = "red", mid = scales::muted("purple"),
+                                high = "blue", breaks = c(-25, 0, 25, 50, 75)) +
+  labs(title = "Margins 2000") 
+p2 + theme_map() + labs(fill = "Percent") + guides(fill = FALSE)
+
+```
+
+State Swing, 1996-2000 Presidential Elections
+```{r pressure6, echo=FALSE, fig.keep='last'}
+#swing from 1996-2000
+#needs to be made by hand
+#margins in '96
+test2000$demtwoparty<-test2000$dem96/(test2000$dem96+test2000$rep96)
+test2000$reptwoparty<-test2000$rep96/(test2000$dem96+test2000$rep96)
+test2000$demmargin96<-test2000$demtwoparty-test2000$reptwoparty
+
+test2000$swing<-test2000$demmargin2000-test2000$demmargin96
+
+
+p0 <- ggplot(data = test2000,
+             mapping = aes(x = long, y = lat, group = group, fill = swing)); p0
+p1 <- p0 + geom_polygon(color = "black", size = 0.1) +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45); p1
+p3 <- p1 + scale_fill_gradient2(low = "red", mid = "white",
+                                high = "royalblue", breaks = c(-25, 0, 25, 50, 75)) +
+  labs(title = "Two Party Vote Swing - '96 to '00") 
+p3 + theme_map() + labs(fill = "Percent")+
+  guides(fill = FALSE)
+```
+
+State Lean, Presidential Election 1996
+```{r pressure7, echo=FALSE, fig.keep='last'}
+p <- ggplot(data = test2000,
+            mapping = aes(x = long, y = lat, fill = demmargin96, 
+                          group = group)); p
+p1 <- p + geom_polygon(color = "gray90", size = 0.05) + 
+  coord_map(projection = "albers", lat0=39, lat1=45); p1
+p2 <- p1 + scale_fill_gradient2() + labs(title = "Presidential Election Results - 1996"); p2
+p2 + theme_map() + labs(fill = "Percent")
+p3 <- p1 + scale_fill_gradient2(low = "red", mid = "white",
+                                high = "royalblue", breaks = c(-1, -.5, 0, .5, 1)) +
+  labs(title = "Margins 1996") ; p3
+p3 + theme_map() + labs(fill = "Percent")+
+  guides(fill = FALSE)
+
+```
+
+State Lean, Presidential 2000
+```{r pressure8, echo=FALSE, fig.keep='last'}
+test2000$demtwoparty00<-test2000$dem/(test2000$dem+test2000$rep)
+test2000$reptwoparty00<-test2000$rep/(test2000$dem+test2000$rep)
+test2000$demmargin00<-test2000$demtwoparty00-test2000$reptwoparty00
+
+p <- ggplot(data = test2000,
+            mapping = aes(x = long, y = lat, fill = demmargin00, 
+                          group = group)); p
+p1 <- p + geom_polygon(color = "gray90", size = 0.05) + 
+  coord_map(projection = "albers", lat0=39, lat1=45); p1
+p2 <- p1 + scale_fill_gradient2() + labs(title = "Presidential Election Results - 2000"); p2
+p2 + theme_map() + labs(fill = "Percent")
+p3 <- p1 + scale_fill_gradient2(low = "red", mid = "white",
+                                high = "royalblue", breaks = c(-1, -.5, 0, .5, 1)) +
+  labs(title = "Margins 2000") ; p3
+p3 + theme_map() + labs(fill = "Percent")+
+  guides(fill = FALSE)
+```
